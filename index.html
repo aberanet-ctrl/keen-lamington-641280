@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EthioHomes & Business – Ethiopia's Premier Property Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Noto+Sans+Ethiopic:wght@400;500&amp;display=swap');
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        
+        .amharic * {
+            font-family: 'Noto Sans Ethiopic', system-ui, sans-serif;
+        }
+        
+        .hero-bg {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url('https://picsum.photos/id/1015/2000/1200') center/cover no-repeat;
+        }
+        
+        .property-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+        
+        .modal {
+            animation: modalPop 0.3s ease forwards;
+        }
+        
+        @keyframes modalPop {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- NAVBAR -->
+    <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <!-- Logo - Fixed & Clean -->
+                <div class="flex items-center gap-x-3">
+                    <div class="w-11 h-11 bg-[#00a3e0] rounded-2xl flex items-center justify-center text-white text-4xl">🏠</div>
+                    <div class="leading-none">
+                        <span class="text-3xl font-bold tracking-tight text-gray-900">EthioHomes</span>
+                        <span class="text-[#00a3e0] text-3xl font-bold">&amp; Business</span>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="hidden md:flex items-center gap-x-8 text-lg font-medium">
+                    <a href="#" class="nav-link flex items-center gap-x-1"><i class="fa-solid fa-house"></i> <span data-en="Buy" data-am="መግዛት">Buy</span></a>
+                    <a href="#" class="nav-link flex items-center gap-x-1"><i class="fa-solid fa-key"></i> <span data-en="Rent" data-am="ኪራይ">Rent</span></a>
+                    <a href="#" class="nav-link flex items-center gap-x-1"><i class="fa-solid fa-hand-holding-dollar"></i> <span data-en="Sell" data-am="መሸጥ">Sell</span></a>
+                    <a href="#" class="nav-link flex items-center gap-x-1"><i class="fa-solid fa-store"></i> <span data-en="Commercial" data-am="ንግድ">Commercial</span></a>
+                </div>
+
+                <div class="flex items-center gap-x-4">
+                    <!-- Language Toggle -->
+                    <div onclick="toggleLanguage()" class="flex items-center bg-gray-100 hover:bg-gray-200 rounded-3xl px-4 py-1 cursor-pointer border">
+                        <span id="lang-en" class="font-medium px-3 py-1 rounded-3xl bg-white shadow-sm">🇬🇧 EN</span>
+                        <span id="lang-am" class="font-medium px-3 py-1 rounded-3xl">🇪🇹 አማ</span>
+                    </div>
+
+                    <button onclick="openListPropertyModal()" class="hidden md:flex items-center gap-x-2 bg-[#00a3e0] hover:bg-[#0088b8] text-white px-6 py-2.5 rounded-3xl font-semibold">
+                        <i class="fa-solid fa-plus"></i>
+                        <span data-en="List your property" data-am="ንብረትዎን ይመዝግቡ">List your property</span>
+                    </button>
+
+                    <button onclick="openAdminModal()" class="flex items-center gap-x-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-3xl font-semibold">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span data-en="Admin" data-am="አስተዳዳሪ">Admin</span>
+                    </button>
+
+                    <button class="flex items-center gap-x-2 border border-gray-300 hover:border-gray-400 px-5 py-2.5 rounded-3xl font-medium">
+                        <i class="fa-solid fa-user"></i>
+                        <span data-en="Sign in" data-am="ግባ">Sign in</span>
+                    </button>
+
+                    <button onclick="toggleMobileMenu()" class="md:hidden text-2xl text-gray-700">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO + SEARCH -->
+    <header class="hero-bg h-screen flex items-center text-white relative">
+        <div class="max-w-7xl mx-auto px-6 pt-20">
+            <div class="max-w-2xl">
+                <h1 class="text-6xl md:text-7xl font-semibold leading-none tracking-tighter mb-6" data-en="Find your perfect home &amp; business in Ethiopia" data-am="በኢትዮጵያ የእርስዎን ፍጹም ቤትና ቢዝነስ ያግኙ">
+                    Find your perfect home &amp; business in Ethiopia
+                </h1>
+                <p class="text-2xl text-white/90 mb-10" data-en="Over 52,000 properties across every region and city" data-am="በሁሉም ክልሎችና ከተሞች 52,000+ ቤቶች ዝግጁ ናቸው">
+                    Over 52,000 properties across every region and city
+                </p>
+
+                <div class="bg-white rounded-3xl p-2 shadow-2xl">
+                    <!-- Search tabs and input (same as before) -->
+                    <div class="flex flex-wrap gap-2 border-b pb-3 px-4">
+                        <button onclick="setSearchTab(0)" id="tab-buy" class="active-tab flex-1 md:flex-none px-8 py-3 rounded-3xl font-semibold bg-[#00a3e0] text-white">Buy</button>
+                        <button onclick="setSearchTab(1)" id="tab-rent" class="flex-1 md:flex-none px-8 py-3 rounded-3xl font-semibold hover:bg-gray-100">Rent</button>
+                        <button onclick="setSearchTab(2)" id="tab-sell" class="flex-1 md:flex-none px-8 py-3 rounded-3xl font-semibold hover:bg-gray-100">Sell</button>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row gap-4 px-4 pt-6">
+                        <div class="flex-1">
+                            <div class="relative">
+                                <i class="fa-solid fa-magnifying-glass absolute left-5 top-4 text-gray-400"></i>
+                                <input id="search-input" type="text" placeholder="Search by city or region" 
+                                       class="w-full pl-12 pr-6 py-4 bg-gray-100 rounded-3xl text-lg focus:outline-none focus:ring-2 focus:ring-[#00a3e0]">
+                            </div>
+                        </div>
+                        <button onclick="performSearch()" class="bg-[#00a3e0] hover:bg-[#0088b8] text-white px-10 py-4 rounded-3xl font-semibold text-lg">Search</button>
+                    </div>
+
+                    <!-- Popular Regions, Capitals & Cities -->
+                    <div class="mt-6 px-4 pb-4">
+                        <p class="text-gray-500 text-sm font-medium mb-3 flex items-center gap-x-2">
+                            <i class="fa-solid fa-map-marker-alt"></i>
+                            Popular Regions, Capitals &amp; Cities
+                        </p>
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="regions-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- The rest of the sections (Featured, Property Types, Footer, Modals) remain the same as the previous version -->
+    <!-- For brevity, I'm including only the critical parts here. Copy the full previous code and replace the <head>, <nav>, and logo area with the above. -->
+
+    <script>
+        // ... (All the JavaScript from the previous version remains unchanged - regions hierarchy, admin modal, list property modal, phone validation, etc.)
+
+        let currentLang = 'en';
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'am' : 'en';
+            document.documentElement.classList.toggle('amharic', currentLang === 'am');
+            document.querySelectorAll('[data-en]').forEach(el => {
+                const text = el.getAttribute(`data-${currentLang}`);
+                if (text) el.textContent = text;
+            });
+            renderRegions();
+        }
+
+        // Rest of your JS functions (renderRegions, openListPropertyModal, openAdminModal, etc.) stay exactly the same as the last version I gave you.
+
+        window.onload = function() {
+            renderRegions();
+            renderFeaturedProperties();   // if you have this function
+            console.log('%c✅ EthioHomes & Business website loaded successfully!', 'color:#00a3e0; font-size:16px;');
+            console.log('Logo should now display clearly as "EthioHomes & Business"');
+        };
+    </script>
+</body>
+</html>
