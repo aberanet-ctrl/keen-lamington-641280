@@ -192,6 +192,7 @@ export default function App() {
             <button onClick={() => {setView('browse'); setActiveFilter('Hotel Room');}} className={`hover:text-[#00a3e0] transition-colors ${activeFilter === 'Hotel Room' ? 'text-[#00a3e0]' : ''}`}>
               Hotel Rooms / መኝታ
             </button>
+            <button onClick={() => {setView('browse'); setActiveFilter('All');}} className="hover:text-[#00a3e0] transition-colors">News / ዜና</button>
             <button onClick={() => setView('admin')} className="ml-4 text-gray-300 hover:text-black flex items-center gap-1 transition-colors">
               <ShieldCheck size={16} /> Admin {pendingListings.length > 0 && `(${pendingListings.length})`}
             </button>
