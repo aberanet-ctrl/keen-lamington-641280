@@ -47,14 +47,15 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   
-  // Media State
+  // Media State - Limited to 3 photos
   const [images, setImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
   // Form & Search state
   const [formData, setFormData] = useState({
-    title: '', price: '', city: '', type: 'House', contactName: '', phone: '', desc: '', specificLocation: '', size: '', rooms: ''
+    title: '', price: '', city: '', type: 'House', contactName: '', phone: '', 
+    desc: '', specificLocation: '', size: '', rooms: ''
   });
   const [searchCity, setSearchCity] = useState('');
   const [searchType, setSearchType] = useState('');
@@ -71,6 +72,7 @@ export default function App() {
       } catch (e) { console.error(e); }
     };
     initAuth();
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -80,6 +82,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return;
+
     const listingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'listings');
     const unsubListings = onSnapshot(listingsRef, (snap) => {
       setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -105,7 +108,8 @@ export default function App() {
       url: URL.createObjectURL(file),
       file
     }));
-    setImages(prev => [...prev, ...newImages].slice(0, 10));
+    // Limit to maximum 3 images
+    setImages(prev => [...prev, ...newImages].slice(0, 3));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -139,20 +143,35 @@ export default function App() {
       setFormData({ title: '', price: '', city: '', type: 'House', contactName: '', phone: '', desc: '', specificLocation: '', size: '', rooms: '' });
       setImages([]);
       setView('browse');
-    } catch (err) { showNotification("Error submitting", "error"); }
+    } catch (err) { 
+      console.error(err);
+      showNotification("Error submitting / ማስገባት አልተቻለም", "error"); 
+    }
   };
 
   const approveListing = async (item) => {
-    const { id, ...data } = item;
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'listings'), { ...data, status: 'active' });
-    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pending', id));
-    showNotification("Approved!");
+    try {
+      const { id, ...data } = item;
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'listings'), { 
+        ...data, 
+        status: 'active',
+        approvedAt: serverTimestamp()
+      });
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pending', id));
+      showNotification("Listing Approved Successfully!");
+    } catch (err) {
+      showNotification("Failed to approve listing", "error");
+    }
   };
 
   const deleteItem = async (id, isPending = false) => {
-    const col = isPending ? 'pending' : 'listings';
-    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
-    showNotification("Removed");
+    try {
+      const col = isPending ? 'pending' : 'listings';
+      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
+      showNotification(isPending ? "Request Rejected" : "Listing Deleted");
+    } catch (err) {
+      showNotification("Failed to delete", "error");
+    }
   };
 
   const filteredListings = listings.filter(l => {
@@ -170,7 +189,11 @@ export default function App() {
     setActiveFilter('All');
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-[#00a3e0] font-bold animate-pulse text-2xl tracking-tighter">EthioHomes...</div>;
+  if (loading) return (
+    <div className="h-screen flex items-center justify-center text-[#00a3e0] font-bold animate-pulse text-2xl tracking-tighter">
+      EthioHomes...
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -192,7 +215,6 @@ export default function App() {
             <button onClick={() => {setView('browse'); setActiveFilter('Hotel Room');}} className={`hover:text-[#00a3e0] transition-colors ${activeFilter === 'Hotel Room' ? 'text-[#00a3e0]' : ''}`}>
               Hotel Rooms / መኝታ
             </button>
-            <button onClick={() => {setView('browse'); setActiveFilter('All');}} className="hover:text-[#00a3e0] transition-colors">News / ዜና</button>
             <button onClick={() => setView('admin')} className="ml-4 text-gray-300 hover:text-black flex items-center gap-1 transition-colors">
               <ShieldCheck size={16} /> Admin {pendingListings.length > 0 && `(${pendingListings.length})`}
             </button>
@@ -205,6 +227,7 @@ export default function App() {
         </div>
       </nav>
 
+      {/* BROWSE VIEW */}
       {view === 'browse' && (
         <>
           {/* HERO SECTION */}
@@ -294,7 +317,7 @@ export default function App() {
           <main className="max-w-7xl mx-auto px-6 py-16">
             <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
               <div>
-                <h2 className="text-3xl font-black text-gray-900 mb-1">ለእርስዎ የቀረቡ ንብረቶች</h2>
+                <h2 className="text-3xl font-black text-gray-900 mb-1">ለእርስዎ የቀረቡ አማራጮች</h2>
                 <div className="h-1.5 w-20 bg-[#00a3e0] rounded-full"></div>
               </div>
               <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">{filteredListings.length} Listing(s)</p>
@@ -312,8 +335,8 @@ export default function App() {
                   </div>
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="mb-2">
-                       <h3 className="font-black text-xl text-gray-800 leading-tight truncate">{item.title}</h3>
-                       {item.contactName && <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">By: {item.contactName}</p>}
+                      <h3 className="font-black text-xl text-gray-800 leading-tight truncate">{item.title}</h3>
+                      {item.contactName && <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">By: {item.contactName}</p>}
                     </div>
                     <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4 font-medium">
                       <MapPin size={14} className="text-[#00a3e0]" /> {item.city} {item.specificLocation && ` - ${item.specificLocation}`}
@@ -339,14 +362,14 @@ export default function App() {
         </>
       )}
 
-      {/* SELL VIEW (LISTING FORM) */}
+      {/* SELL / LIST PROPERTY VIEW */}
       {view === 'sell' && (
         <div className="py-12 md:py-20 px-6 bg-slate-900 min-h-screen">
           <div className="bg-white rounded-[2.5rem] w-full max-w-4xl mx-auto shadow-2xl overflow-hidden">
             <div className="bg-[#00a3e0] px-10 py-10 text-white flex justify-between items-start">
               <div>
-                <h2 className="text-3xl font-black mb-2">ንብረትዎን ይለጥፉ</h2>
-                <p className="text-white/80 font-medium">ሽያጭ፣ ኪራይ ወይም መኝታ ቤቶችን በፍጥነት ያስመዝግቡ</p>
+                <h2 className="text-3xl font-black mb-2">ይሽጡ፣ያከራዩ</h2>
+                <p className="text-white/80 font-medium">ሽያጭ፣ ኪራይ ወይም መኝታ ቤቶችን ያስመዝግቡ</p>
               </div>
               <button onClick={() => setView('browse')} className="bg-white/20 p-2 rounded-full hover:bg-white/40 transition-colors">
                 <X size={24} />
@@ -354,7 +377,6 @@ export default function App() {
             </div>
             
             <form onSubmit={handleListProperty} className="p-8 md:p-12 space-y-12">
-              
               {/* Basic Info */}
               <div className="space-y-6">
                 <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2">1. Basic Information / መሠረታዊ መረጃ</h4>
@@ -394,24 +416,24 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Contact Detail Section */}
+              {/* Contact Details */}
               <div className="space-y-6">
                 <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2 flex items-center gap-2">
-                    <User size={16}/> 3. Contact Detail / የአድራሻ መረጃ
+                  <User size={16}/> 3. Contact Detail / የአድራሻ መረጃ
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="space-y-2">
+                  <div className="space-y-2">
                     <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Full Name / ስም</label>
                     <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.contactName} onChange={e => setFormData({...formData, contactName: e.target.value})} placeholder="e.g. Abebe Kebede" />
                   </div>
-                   <div className="space-y-2">
+                  <div className="space-y-2">
                     <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Phone Number / ስልክ</label>
                     <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="0912..." />
                   </div>
                 </div>
               </div>
 
-              {/* Details */}
+              {/* Additional Details */}
               <div className="space-y-6">
                 <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2">4. Additional Details</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -434,10 +456,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Media Section (Now at Bottom) */}
+              {/* Photos Section - Max 3 */}
               <div className="space-y-6">
                 <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2 flex items-center gap-2">
-                  <ImageIcon size={16} /> 5. Photos / ፎቶዎች
+                  <ImageIcon size={16} /> 5. Photos / ፎቶዎች (Max 3)
                 </h4>
                 
                 <div 
@@ -456,22 +478,23 @@ export default function App() {
                     <UploadCloud className="text-[#00a3e0]" size={32} />
                   </div>
                   <p className="font-bold text-gray-900">Add Property Photos</p>
-                  <p className="text-xs text-gray-400 mt-1">Drag and drop or click to upload (Max 10)</p>
+                  <p className="text-xs text-gray-400 mt-1">Drag and drop or click to upload (Maximum 3 photos)</p>
                 </div>
 
                 {images.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     {images.map((img, idx) => (
                       <div key={img.id} className="relative aspect-square rounded-2xl overflow-hidden group border border-gray-100">
                         <img src={img.url} className="w-full h-full object-cover" />
                         <button 
-                          type="button" onClick={() => removeImage(img.id)}
-                          className="absolute top-2 right-2 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          type="button" 
+                          onClick={() => removeImage(img.id)}
+                          className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow"
                         >
-                          <X size={14} />
+                          <X size={16} />
                         </button>
                         {idx === 0 && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-[#00a3e0]/90 text-white text-[8px] font-black uppercase text-center py-1">Main Cover</div>
+                          <div className="absolute bottom-0 left-0 right-0 bg-[#00a3e0]/90 text-white text-[9px] font-black uppercase text-center py-1">Main Cover</div>
                         )}
                       </div>
                     ))}
@@ -489,77 +512,127 @@ export default function App() {
         </div>
       )}
 
-      {/* ADMIN VIEW */}
+      {/* ADMIN PANEL */}
       {view === 'admin' && (
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
             <div>
-              <h2 className="text-3xl font-black flex items-center gap-3"><ShieldCheck className="text-[#00a3e0]" size={32} /> Admin Control</h2>
-              <p className="text-gray-400 font-bold text-sm uppercase tracking-widest mt-1">Quality Control Dashboard</p>
+              <h2 className="text-3xl font-black flex items-center gap-3">
+                <ShieldCheck className="text-[#00a3e0]" size={32} /> 
+                Admin Control Panel
+              </h2>
+              <p className="text-gray-400 font-bold text-sm uppercase tracking-widest mt-1">Quality Control & Moderation</p>
             </div>
-            <button onClick={() => setView('browse')} className="bg-gray-100 px-6 py-3 rounded-2xl font-bold hover:bg-gray-200 transition-colors">Back to Browse</button>
+            <button 
+              onClick={() => setView('browse')} 
+              className="bg-gray-100 px-6 py-3 rounded-2xl font-bold hover:bg-gray-200 transition-colors flex items-center gap-2"
+            >
+              ← Back to Browse
+            </button>
           </div>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {/* Pending Requests */}
             <div className="space-y-6">
-              <h3 className="font-black uppercase text-xs tracking-[0.2em] text-orange-500 border-b pb-4">Pending Requests ({pendingListings.length})</h3>
-              {pendingListings.map(item => (
-                <div key={item.id} className="bg-white p-5 rounded-[2rem] border border-orange-50 shadow-sm">
-                  <div className="flex gap-4 items-start mb-4">
-                    <img src={item.photoUrl || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=100'} className="w-20 h-20 rounded-2xl object-cover" />
-                    <div className="flex-1">
-                      <p className="font-black text-gray-800">{item.title}</p>
-                      <p className="text-[11px] font-bold text-[#00a3e0] uppercase">{item.type} in {item.city}</p>
-                      <p className="text-[10px] text-gray-400 font-bold">Contact: {item.contactName} ({item.phone})</p>
-                      <p className="text-lg font-black text-gray-900 mt-1">{Number(item.price).toLocaleString()} ብር</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => approveListing(item)} className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2">
-                      <Check size={18} /> Approve
-                    </button>
-                    <button onClick={() => deleteItem(item.id, true)} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition flex items-center justify-center gap-2">
-                      <Trash2 size={18} /> Reject
-                    </button>
-                  </div>
+              <h3 className="font-black uppercase text-xs tracking-[0.2em] text-orange-500 border-b pb-4 flex items-center gap-2">
+                <span>Pending Approvals</span>
+                <span className="bg-orange-100 text-orange-600 px-3 py-0.5 rounded-full text-xs">{pendingListings.length}</span>
+              </h3>
+
+              {pendingListings.length === 0 ? (
+                <div className="bg-white p-12 rounded-3xl text-center text-gray-400">
+                  No pending listings at the moment
                 </div>
-              ))}
-            </div>
-            
-            <div className="space-y-6">
-              <h3 className="font-black uppercase text-xs tracking-[0.2em] text-blue-500 border-b pb-4">Live Listings ({listings.length})</h3>
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {listings.map(item => (
-                  <div key={item.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex gap-4 items-center">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-gray-800 truncate">{item.title}</p>
-                      <p className="text-[10px] text-gray-400 font-black uppercase">{item.city} • {item.type}</p>
+              ) : (
+                pendingListings.map(item => (
+                  <div key={item.id} className="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex gap-5">
+                      <img 
+                        src={item.photoUrl || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=120'} 
+                        className="w-28 h-28 rounded-2xl object-cover flex-shrink-0" 
+                        alt={item.title}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-lg text-gray-900 leading-tight">{item.title}</h4>
+                        <p className="text-[#00a3e0] font-semibold mt-1">{item.type} • {item.city}</p>
+                        <p className="text-sm text-gray-600 mt-2 line-clamp-2">{item.desc}</p>
+                        
+                        <div className="mt-4 flex items-center justify-between">
+                          <div>
+                            <p className="text-2xl font-black text-gray-900">{Number(item.price).toLocaleString()} ብር</p>
+                            <p className="text-xs text-gray-500">Contact: {item.contactName}</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <button onClick={() => deleteItem(item.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors">
-                      <Trash2 size={18} />
-                    </button>
+
+                    <div className="flex gap-3 mt-6">
+                      <button 
+                        onClick={() => approveListing(item)}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
+                      >
+                        <Check size={20} /> Approve Listing
+                      </button>
+                      <button 
+                        onClick={() => deleteItem(item.id, true)}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
+                      >
+                        <Trash2 size={20} /> Reject
+                      </button>
+                    </div>
                   </div>
-                ))}
+                ))
+              )}
+            </div>
+
+            {/* Live Listings */}
+            <div className="space-y-6">
+              <h3 className="font-black uppercase text-xs tracking-[0.2em] text-blue-500 border-b pb-4 flex items-center gap-2">
+                <span>Live Listings</span>
+                <span className="bg-blue-100 text-blue-600 px-3 py-0.5 rounded-full text-xs">{listings.length}</span>
+              </h3>
+
+              <div className="space-y-4 max-h-[680px] overflow-y-auto pr-2 custom-scrollbar">
+                {listings.length === 0 ? (
+                  <div className="bg-white p-12 rounded-3xl text-center text-gray-400">
+                    No live listings yet
+                  </div>
+                ) : (
+                  listings.map(item => (
+                    <div key={item.id} className="bg-white p-5 rounded-3xl border border-gray-100 flex gap-4 items-center hover:border-blue-200 transition-all group">
+                      <img 
+                        src={item.photoUrl} 
+                        className="w-16 h-16 rounded-2xl object-cover" 
+                        alt={item.title}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-800 truncate">{item.title}</p>
+                        <p className="text-xs text-gray-500 font-medium">{item.city} • {item.type}</p>
+                        <p className="text-sm font-semibold text-gray-900 mt-0.5">{Number(item.price).toLocaleString()} ብር</p>
+                      </div>
+                      <button 
+                        onClick={() => deleteItem(item.id, false)}
+                        className="opacity-40 group-hover:opacity-100 p-3 hover:bg-red-50 text-red-500 rounded-xl transition"
+                        title="Delete Listing"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Notifications */}
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] px-10 py-4 rounded-[2rem] text-white font-black shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-300
-          ${toast.type === 'error' ? 'bg-red-600' : 'bg-gray-900'}`}>
+        <div className={`fixed bottom-6 right-6 px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 text-white font-medium z-50
+          ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
           {toast.msg}
         </div>
       )}
-      
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e2e2; border-radius: 10px; }
-      `}</style>
     </div>
   );
 }
