@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, query, serverTimestamp } from 'firebase/firestore';
 import { 
   Search, Plus, Home, MapPin, Phone, Check, X, ShieldCheck, 
   Building, Hotel, Star, Trash2, LayoutDashboard, ChevronDown, Banknote, RefreshCcw, 
-  Maximize2, BedDouble, AlignLeft, Info
+  Maximize2, BedDouble, AlignLeft, Info, UploadCloud, ImageIcon, ChevronRight, User
 } from 'lucide-react';
 
 // --- Firebase Configuration ---
@@ -46,10 +46,15 @@ export default function App() {
   const [pendingListings, setPendingListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  
+  // Media State
+  const [images, setImages] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Form & Search state
   const [formData, setFormData] = useState({
-    title: '', price: '', city: '', type: 'House', phone: '', desc: '', photoUrl: '', specificLocation: '', size: '', rooms: ''
+    title: '', price: '', city: '', type: 'House', contactName: '', phone: '', desc: '', specificLocation: '', size: '', rooms: ''
   });
   const [searchCity, setSearchCity] = useState('');
   const [searchType, setSearchType] = useState('');
@@ -93,18 +98,46 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const processFiles = (files) => {
+    const validFiles = files.filter(file => file.type.startsWith('image/'));
+    const newImages = validFiles.map(file => ({
+      id: Math.random().toString(36).substr(2, 9),
+      url: URL.createObjectURL(file),
+      file
+    }));
+    setImages(prev => [...prev, ...newImages].slice(0, 10));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (id) => {
+    setImages(prev => {
+      const filtered = prev.filter(img => img.id !== id);
+      const removed = prev.find(img => img.id === id);
+      if (removed) URL.revokeObjectURL(removed.url);
+      return filtered;
+    });
+  };
+
   const handleListProperty = async (e) => {
     e.preventDefault();
+    if (images.length === 0) {
+      showNotification("Please upload at least one photo / ቢያንስ አንድ ፎቶ ይጫኑ", "error");
+      return;
+    }
+    
     try {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'pending'), {
         ...formData,
         price: Number(formData.price),
         status: 'pending',
         createdAt: serverTimestamp(),
-        userId: user.uid
+        userId: user.uid,
+        photoUrl: images[0].url, 
+        allPhotos: images.map(img => img.url)
       });
       showNotification("Submitted for review! / ለግምገማ ተልኳል!");
-      setFormData({ title: '', price: '', city: '', type: 'House', phone: '', desc: '', photoUrl: '', specificLocation: '', size: '', rooms: '' });
+      setFormData({ title: '', price: '', city: '', type: 'House', contactName: '', phone: '', desc: '', specificLocation: '', size: '', rooms: '' });
+      setImages([]);
       setView('browse');
     } catch (err) { showNotification("Error submitting", "error"); }
   };
@@ -127,7 +160,6 @@ export default function App() {
     const matchesSearchCity = !searchCity || l.city === searchCity;
     const matchesSearchType = !searchType || l.type === searchType;
     const matchesMinPrice = !searchMinPrice || Number(l.price) >= Number(searchMinPrice);
-    
     return matchesFilter && matchesSearchCity && matchesSearchType && matchesMinPrice;
   });
 
@@ -278,12 +310,14 @@ export default function App() {
                     </div>
                   </div>
                   <div className="p-6 flex-1 flex flex-col">
-                    <h3 className="font-black text-xl text-gray-800 mb-2 leading-tight">{item.title}</h3>
+                    <div className="mb-2">
+                       <h3 className="font-black text-xl text-gray-800 leading-tight truncate">{item.title}</h3>
+                       {item.contactName && <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">By: {item.contactName}</p>}
+                    </div>
                     <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4 font-medium">
                       <MapPin size={14} className="text-[#00a3e0]" /> {item.city} {item.specificLocation && ` - ${item.specificLocation}`}
                     </div>
                     
-                    {/* Brief Stats snippet if available */}
                     {(item.size || item.rooms) && (
                       <div className="flex gap-4 mb-4 text-xs font-bold text-gray-400 border-t border-gray-50 pt-3">
                         {item.size && <span className="flex items-center gap-1"><Maximize2 size={12} /> {item.size} m²</span>}
@@ -318,93 +352,135 @@ export default function App() {
               </button>
             </div>
             
-            <form onSubmit={handleListProperty} className="p-8 md:p-12 space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
-                
-                {/* Basic Info */}
-                <div className="md:col-span-2">
-                  <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest mb-6 border-b pb-2">1. Basic Information / መሠረታዊ መረጃ</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Property Name / የንብረቱ ስም</label>
-                      <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#00a3e0]/20" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. Modern Villa in Bole" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Type / ዓይነት</label>
-                      <select className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none text-sm font-bold appearance-none" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                        {PROPERTY_TYPES.map(t => <option key={t.en} value={t.en}>{t.en} / {t.am}</option>)}
-                      </select>
-                    </div>
+            <form onSubmit={handleListProperty} className="p-8 md:p-12 space-y-12">
+              
+              {/* Basic Info */}
+              <div className="space-y-6">
+                <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2">1. Basic Information / መሠረታዊ መረጃ</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Property Name / የንብረቱ ስም</label>
+                    <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#00a3e0]/20" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. Modern Villa in Bole" />
                   </div>
-                </div>
-
-                {/* Pricing & Location */}
-                <div className="md:col-span-2">
-                   <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest mb-6 border-b pb-2">2. Price & Location / ዋጋ እና ቦታ</h4>
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Price / ዋጋ (ETB)</label>
-                      <input required type="number" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="0.00" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">City / ከተማ</label>
-                      <select required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none text-sm font-bold" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})}>
-                        <option value="">Select City</option>
-                        {CITIES.map(c => <option key={c.en} value={c.en}>{c.en} / {c.am}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Specific Area / ሰፈር</label>
-                      <input className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.specificLocation} onChange={e => setFormData({...formData, specificLocation: e.target.value})} placeholder="e.g. Bole Atlas, Summit" />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Type / ዓይነት</label>
+                    <select className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none text-sm font-bold" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                      {PROPERTY_TYPES.map(t => <option key={t.en} value={t.en}>{t.en} / {t.am}</option>)}
+                    </select>
                   </div>
-                </div>
-
-                {/* Details Section */}
-                <div className="md:col-span-2">
-                   <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest mb-6 border-b pb-2">3. Property Details / የንብረት ዝርዝር</h4>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Maximize2 size={12}/> Size / ስፋት (m²)</label>
-                      <input type="text" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} placeholder="e.g. 200" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><BedDouble size={12}/> Rooms / ክፍሎች</label>
-                      <input type="text" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.rooms} onChange={e => setFormData({...formData, rooms: e.target.value})} placeholder="e.g. 4 Bedrooms, 2 Bath" />
-                    </div>
-                   </div>
-                   
-                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><AlignLeft size={12}/> Detailed Description / ዝርዝር መግለጫ</label>
-                    <textarea 
-                      className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-3xl outline-none min-h-[160px] resize-none focus:ring-2 focus:ring-[#00a3e0]/10" 
-                      value={formData.desc} 
-                      onChange={e => setFormData({...formData, desc: e.target.value})} 
-                      placeholder="Add specific location details, nearby facilities, special features, size, or any dealer contact info..."
-                    />
-                    <p className="text-[10px] text-gray-400 font-medium italic">* This info helps customers find your property faster.</p>
-                   </div>
-                </div>
-
-                {/* Contact & Media */}
-                <div className="md:col-span-2">
-                   <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest mb-6 border-b pb-2">4. Media & Contact / ምስል እና አድራሻ</h4>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Phone / ስልክ</label>
-                      <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="09..." />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Image URL / የፎቶ ሊንክ</label>
-                      <input className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.photoUrl} onChange={e => setFormData({...formData, photoUrl: e.target.value})} placeholder="Link to property image" />
-                    </div>
-                   </div>
                 </div>
               </div>
 
+              {/* Pricing & Location */}
+              <div className="space-y-6">
+                <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2">2. Price & Location / ዋጋ እና ቦታ</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Price / ዋጋ (ETB)</label>
+                    <input required type="number" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="0.00" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">City / ከተማ</label>
+                    <select required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none text-sm font-bold" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})}>
+                      <option value="">Select City</option>
+                      {CITIES.map(c => <option key={c.en} value={c.en}>{c.en} / {c.am}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Specific Area / ሰፈር</label>
+                    <input className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.specificLocation} onChange={e => setFormData({...formData, specificLocation: e.target.value})} placeholder="e.g. Bole Atlas, Summit" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Detail Section */}
+              <div className="space-y-6">
+                <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2 flex items-center gap-2">
+                    <User size={16}/> 3. Contact Detail / የአድራሻ መረጃ
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Full Name / ስም</label>
+                    <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.contactName} onChange={e => setFormData({...formData, contactName: e.target.value})} placeholder="e.g. Abebe Kebede" />
+                  </div>
+                   <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Phone Number / ስልክ</label>
+                    <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="0912..." />
+                  </div>
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="space-y-6">
+                <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2">4. Additional Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Maximize2 size={12}/> Size (m²)</label>
+                    <input type="text" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} placeholder="e.g. 200" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><BedDouble size={12}/> Rooms</label>
+                    <input type="text" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.rooms} onChange={e => setFormData({...formData, rooms: e.target.value})} placeholder="e.g. 4 Beds" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Detailed Description</label>
+                  <textarea 
+                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-3xl outline-none min-h-[120px] resize-none" 
+                    value={formData.desc} onChange={e => setFormData({...formData, desc: e.target.value})} 
+                    placeholder="Describe specific features..."
+                  />
+                </div>
+              </div>
+
+              {/* Media Section (Now at Bottom) */}
+              <div className="space-y-6">
+                <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest border-b pb-2 flex items-center gap-2">
+                  <ImageIcon size={16} /> 5. Photos / ፎቶዎች
+                </h4>
+                
+                <div 
+                  className={`border-2 border-dashed rounded-3xl p-10 transition-all flex flex-col items-center justify-center cursor-pointer
+                    ${isDragging ? 'border-[#00a3e0] bg-[#00a3e0]/5' : 'border-gray-200 bg-gray-50 hover:border-[#00a3e0]/50'}`}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => { e.preventDefault(); setIsDragging(false); processFiles(Array.from(e.dataTransfer.files)); }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input 
+                    type="file" ref={fileInputRef} hidden multiple accept="image/*"
+                    onChange={(e) => processFiles(Array.from(e.target.files))}
+                  />
+                  <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4">
+                    <UploadCloud className="text-[#00a3e0]" size={32} />
+                  </div>
+                  <p className="font-bold text-gray-900">Add Property Photos</p>
+                  <p className="text-xs text-gray-400 mt-1">Drag and drop or click to upload (Max 10)</p>
+                </div>
+
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                    {images.map((img, idx) => (
+                      <div key={img.id} className="relative aspect-square rounded-2xl overflow-hidden group border border-gray-100">
+                        <img src={img.url} className="w-full h-full object-cover" />
+                        <button 
+                          type="button" onClick={() => removeImage(img.id)}
+                          className="absolute top-2 right-2 p-1 bg-white/90 rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={14} />
+                        </button>
+                        {idx === 0 && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-[#00a3e0]/90 text-white text-[8px] font-black uppercase text-center py-1">Main Cover</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="pt-6">
-                <button type="submit" className="w-full bg-[#00a3e0] text-white py-5 rounded-3xl font-black text-lg shadow-2xl shadow-[#00a3e0]/40 hover:bg-[#0088bc] transition active:scale-[0.98]">
-                  PUBLISH PROPERTY / ይላኩ
+                <button type="submit" className="w-full bg-[#00a3e0] text-white py-5 rounded-3xl font-black text-lg shadow-2xl shadow-[#00a3e0]/40 hover:bg-[#0088bc] transition flex items-center justify-center gap-3">
+                  PUBLISH PROPERTY / ይላኩ <ChevronRight size={20} />
                 </button>
               </div>
             </form>
@@ -433,15 +509,10 @@ export default function App() {
                     <div className="flex-1">
                       <p className="font-black text-gray-800">{item.title}</p>
                       <p className="text-[11px] font-bold text-[#00a3e0] uppercase">{item.type} in {item.city}</p>
-                      <p className="text-lg font-black text-gray-900">{Number(item.price).toLocaleString()} ብር</p>
+                      <p className="text-[10px] text-gray-400 font-bold">Contact: {item.contactName} ({item.phone})</p>
+                      <p className="text-lg font-black text-gray-900 mt-1">{Number(item.price).toLocaleString()} ብር</p>
                     </div>
                   </div>
-                  {item.desc && (
-                    <div className="bg-gray-50 p-4 rounded-2xl text-xs text-gray-600 mb-4 whitespace-pre-line border border-gray-100">
-                      <p className="font-bold text-[10px] text-gray-400 uppercase mb-1">Detailed Description:</p>
-                      {item.desc}
-                    </div>
-                  )}
                   <div className="flex gap-2">
                     <button onClick={() => approveListing(item)} className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2">
                       <Check size={18} /> Approve
