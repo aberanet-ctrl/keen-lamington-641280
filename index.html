@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EthioHomes & Business</title>
+<title>EthioHomes & Business – Ethiopia's Premier Property Marketplace</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -42,21 +42,22 @@ body { font-family: Inter, sans-serif; }
 </nav>
 
 <!-- HERO -->
-<header class="hero-bg h-screen flex items-center text-black">
+<header class="hero-bg h-screen flex items-center text-white">
 <div class="max-w-4xl mx-auto text-center">
 <h1 class="text-5xl font-bold mb-4">Find your perfect home</h1>
+<p class="text-lg">Explore premium listings across Ethiopia.</p>
 </div>
 </header>
 
-<!-- ✅ FEATURED PROPERTIES (ADDED) -->
+<!-- FEATURED PROPERTIES -->
 <section class="max-w-7xl mx-auto px-6 py-12">
 <h2 class="text-2xl font-bold mb-6">Featured Properties</h2>
 <div id="featured-properties" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
 </section>
 
-<!-- SIMPLE FORM -->
-<div id="form" class="hidden fixed top-0 left-0 w-full h-full bg-black/50 flex items-center justify-center">
-<div class="bg-white p-6 rounded-xl w-96">
+<!-- ADMIN FORM -->
+<div id="form" class="hidden fixed top-0 left-0 w-full h-full bg-black/50 flex items-center justify-center z-50">
+<div class="bg-white p-6 rounded-xl w-96 relative">
 
 <h2 class="text-xl font-bold mb-4">Add Property</h2>
 
@@ -65,61 +66,84 @@ body { font-family: Inter, sans-serif; }
 <input id="city" placeholder="City" class="w-full mb-2 p-2 border rounded">
 <input id="image" placeholder="Image URL" class="w-full mb-2 p-2 border rounded">
 
-<button onclick="submitProperty()" class="bg-blue-500 text-white px-4 py-2 rounded w-full">Submit</button>
+<button onclick="submitProperty()" class="bg-blue-500 text-white px-4 py-2 rounded w-full mt-2">Submit</button>
+<button onclick="closeForm()" class="absolute top-2 right-2 text-gray-500 text-xl hover:text-red-500">&times;</button>
 </div>
 </div>
 
 <script>
-
-// OPEN FORM
+// OPEN & CLOSE FORM
 function openForm(){
-document.getElementById("form").classList.remove("hidden");
+    document.getElementById("form").classList.remove("hidden");
+}
+function closeForm(){
+    document.getElementById("form").classList.add("hidden");
 }
 
-// ✅ SAVE PROPERTY
-function saveProperty(property){
-let properties = JSON.parse(localStorage.getItem("properties")) || [];
-properties.push(property);
-localStorage.setItem("properties", JSON.stringify(properties));
+// SUBMIT PROPERTY TO BACKEND
+async function submitProperty(){
+    const property = {
+        title: document.getElementById("title").value,
+        price: document.getElementById("price").value,
+        city: document.getElementById("city").value,
+        image: document.getElementById("image").value
+    };
+
+    if(!property.title || !property.price || !property.city || !property.image){
+        alert("Please fill in all fields!");
+        return;
+    }
+
+    const res = await fetch('http://localhost:5000/api/properties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(property)
+    });
+
+    const data = await res.json();
+    if(data.success){
+        alert('Property added!');
+        renderFeaturedProperties();
+        closeForm();
+        // clear form
+        document.getElementById("title").value = '';
+        document.getElementById("price").value = '';
+        document.getElementById("city").value = '';
+        document.getElementById("image").value = '';
+    }
 }
 
-// ✅ SUBMIT
-function submitProperty(){
-const property = {
-title: document.getElementById("title").value,
-price: document.getElementById("price").value,
-city: document.getElementById("city").value,
-image: document.getElementById("image").value
-};
+// FETCH & RENDER PROPERTIES
+async function renderFeaturedProperties(){
+    const container = document.getElementById("featured-properties");
+    const res = await fetch('http://localhost:5000/api/properties');
+    const properties = await res.json();
 
-saveProperty(property);
-alert("Property added!");
+    container.innerHTML = "";
 
-renderFeaturedProperties();
+    properties.forEach(p=>{
+        container.innerHTML += `
+        <div class="bg-white p-4 rounded-xl shadow relative">
+            <img src="${p.image}" class="h-40 w-full object-cover rounded">
+            <h3 class="font-bold mt-2">${p.title}</h3>
+            <p>${p.city}</p>
+            <p class="text-blue-600">${p.price}</p>
+            <button onclick="deleteProperty('${p._id}')" class="absolute top-2 right-2 text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+        </div>
+        `;
+    });
 }
 
-// ✅ DISPLAY
-function renderFeaturedProperties(){
-const container = document.getElementById("featured-properties");
-const properties = JSON.parse(localStorage.getItem("properties")) || [];
-
-container.innerHTML = "";
-
-properties.forEach(p=>{
-container.innerHTML += `
-<div class="bg-white p-4 rounded-xl shadow">
-<img src="${p.image}" class="h-40 w-full object-cover rounded">
-<h3 class="font-bold mt-2">${p.title}</h3>
-<p>${p.city}</p>
-<p class="text-blue-600">${p.price}</p>
-</div>
-`;
-});
+// DELETE PROPERTY
+async function deleteProperty(id){
+    if(confirm('Are you sure you want to delete this property?')){
+        await fetch(`http://localhost:5000/api/properties/${id}`, { method: 'DELETE' });
+        renderFeaturedProperties();
+    }
 }
 
-// LOAD ON START
+// INITIAL LOAD
 window.onload = renderFeaturedProperties;
-
 </script>
 
 </body>
