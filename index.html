@@ -1,257 +1,493 @@
-<!DOCTYPE html>
-<html lang="am">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EthioHomes & Business – ኢትዮሕምስ እና ቢዝነስ</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@100..900&display=swap');
-        body { font-family: 'Noto Sans Ethiopic', 'Inter', sans-serif; }
-        .hero-bg {
-            background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)),
-            url('https://images.unsplash.com/photo-1582407947304-fd86f028f716?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80') center/cover no-repeat;
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, query, serverTimestamp } from 'firebase/firestore';
+import { 
+  Search, Plus, Home, MapPin, Phone, Check, X, ShieldCheck, 
+  Building, Hotel, Star, Trash2, LayoutDashboard, ChevronDown, Banknote, RefreshCcw, 
+  Maximize2, BedDouble, AlignLeft, Info
+} from 'lucide-react';
+
+// --- Firebase Configuration ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'ethio-homes-v6-main';
+
+const CITIES = [
+  { en: "Addis Ababa", am: "አዲስ አበባ" }, { en: "Adama", am: "አዳማ" }, { en: "Adwa", am: "አድዋ" },
+  { en: "Arba Minch", am: "አርባ ምንጭ" }, { en: "Asaita", am: "አሳይታ" }, { en: "Asosa", am: "አሶሳ" },
+  { en: "Axum", am: "አክሱም" }, { en: "Bahir Dar", am: "ባህር ዳር" }, { en: "Bishoftu", am: "ቢሾፍቱ" },
+  { en: "Butajira", am: "ቡታጅራ" }, { en: "Chiro", am: "ጭሮ" }, { en: "Debre Berhan", am: "ደብረ ብርሃን" },
+  { en: "Debre Markos", am: "ደብረ ማርቆስ" }, { en: "Debre Tabor", am: "ደብረ ታቦር" }, { en: "Degehabur", am: "ደገሀቡር" },
+  { en: "Dessie", am: "ደሴ" }, { en: "Dilla", am: "ዲላ" }, { en: "Dire Dawa", am: "ድሬዳዋ" },
+  { en: "Gambela", am: "ጋምቤላ" }, { en: "Goba", am: "ጎባ" }, { en: "Gondar", am: "ጎንደር" },
+  { en: "Harar", am: "ሀረር" }, { en: "Hawassa", am: "ሀዋሳ" }, { en: "Hosaena", am: "ሆሳዕና" },
+  { en: "Jijiga", am: "ጅጅጋ" }, { en: "Jimma", am: "ጅማ" }, { en: "Jinka", am: "ጂንካ" },
+  { en: "Kobo", am: "ቆቦ" }, { en: "Kombolcha", am: "ኮምቦልቻ" }, { en: "Mekelle", am: "መቀሌ" },
+  { en: "Metu", am: "መቱ" }, { en: "Mizan Teferi", am: "ሚዛን ተፈሪ" }, { en: "Negele Borana", am: "ነገሌ ቦረና" },
+  { en: "Nekemte", am: "ነቀምቴ" }, { en: "Robbe", am: "ሮቤ" }, { en: "Semera", am: "ሰመራ" },
+  { en: "Shashamane", am: "ሻሸመኔ" }, { en: "Sodo", am: "ሶዶ" }, { en: "Welkite", am: "ወልቂጤ" },
+  { en: "Woldiya", am: "ወልድያ" }, { en: "Ziway", am: "ዝዋይ" }
+].sort((a, b) => a.en.localeCompare(b.en));
+
+const PROPERTY_TYPES = [
+  { en: "House", am: "ቤት" }, { en: "Villa", am: "ቪላ" },
+  { en: "Apartment", am: "አፓርታማ" }, { en: "Land", am: "መሬት" },
+  { en: "Commercial", am: "ንግድ ቤት" }, { en: "Hotel Room", am: "መኝታ" }
+];
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [view, setView] = useState('browse');
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [listings, setListings] = useState([]);
+  const [pendingListings, setPendingListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  // Form & Search state
+  const [formData, setFormData] = useState({
+    title: '', price: '', city: '', type: 'House', phone: '', desc: '', photoUrl: '', specificLocation: '', size: '', rooms: ''
+  });
+  const [searchCity, setSearchCity] = useState('');
+  const [searchType, setSearchType] = useState('');
+  const [searchMinPrice, setSearchMinPrice] = useState('');
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
         }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #00a3e0; border-radius: 10px; }
-        
-        .modal-scroll::-webkit-scrollbar { width: 4px; }
-    </style>
-</head>
-<body class="bg-gray-50">
+      } catch (e) { console.error(e); }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
-    <!-- NAVIGATION -->
-    <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-x-3 cursor-pointer" onclick="window.location.reload()">
-                <div class="w-11 h-11 bg-[#00a3e0] rounded-xl flex items-center justify-center text-white text-2xl">🏠</div>
-                <div>
-                    <h1 class="text-xl font-bold leading-none">EthioHomes</h1>
-                    <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Property Portal</span>
-                </div>
-            </div>
-            
-            <div class="hidden lg:flex items-center gap-x-6 text-sm font-medium text-gray-700">
-                <a href="#" class="hover:text-[#00a3e0] transition whitespace-nowrap">Buy / ግዢ</a>
-                <a href="#" class="hover:text-[#00a3e0] transition whitespace-nowrap">Rent / ኪራይ</a>
-                <a href="#" class="hover:text-[#00a3e0] transition whitespace-nowrap">Sell / ሽያጭ</a>
-                <a href="#" class="hover:text-[#00a3e0] transition font-bold border-l pl-6 border-gray-200 text-[#00a3e0]">Hotel Rooms / መኝታ አገ/ት</a>
-            </div>
+  useEffect(() => {
+    if (!user) return;
+    const listingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'listings');
+    const unsubListings = onSnapshot(listingsRef, (snap) => {
+      setListings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error(err));
 
-            <button onclick="openForm()" class="bg-[#00a3e0] hover:bg-[#0088bc] text-white px-4 py-2 rounded-xl font-semibold transition shadow-md flex flex-col items-center leading-tight">
-                <span class="text-[10px] opacity-90">List Property</span>
-                <span class="text-xs md:text-sm font-bold">ይሽጡ፣ ያከራዩ፣ ይደልሉ</span>
-            </button>
-        </div>
-    </nav>
+    const pendingRef = collection(db, 'artifacts', appId, 'public', 'data', 'pending');
+    const unsubPending = onSnapshot(pendingRef, (snap) => {
+      setPendingListings(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (err) => console.error(err));
 
-    <!-- HERO SECTION -->
-    <header class="hero-bg h-[60vh] flex flex-col justify-center items-center text-white text-center px-6">
-        <h1 class="text-3xl md:text-5xl font-extrabold mb-6 drop-shadow-xl max-w-4xl leading-tight">
-            ቤትዎን ወይም ንግድ ቦታዎን እዚህ ያግኙ
-        </h1>
-        <p class="text-lg md:text-2xl mb-10 max-w-3xl font-medium leading-relaxed bg-black/20 p-4 rounded-lg backdrop-blur-sm">
-            እኛ መረጃውን በነፃ ከሁሉም ኢትዮጲያ ወደ አንድ ቋት እናመጣለን እርሶ ደግሞ አይተው አረጋግጠው ይግዙ፣ይከራዩ
-        </p>
-        <button onclick="document.getElementById('search-container').scrollIntoView({behavior:'smooth'})" class="bg-[#00a3e0] text-white px-10 py-4 rounded-full text-lg font-bold hover:scale-105 transition-transform shadow-2xl border-2 border-white/20">
-            አሁኑኑ ይፈልጉ
-        </button>
-    </header>
+    return () => { unsubListings(); unsubPending(); };
+  }, [user]);
 
-    <!-- SEARCH FILTERS -->
-    <section id="search-container" class="max-w-7xl mx-auto px-6 -mt-12 relative z-10">
-        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-2xl border border-gray-100">
-            <h2 class="text-lg font-bold mb-6 flex items-center gap-2 text-gray-800">
-                <i class="fa-solid fa-magnifying-glass text-[#00a3e0]"></i> Search / ንብረት ፍለጋ
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">City / ከተማ</label>
-                    <select id="search-city" class="city-dropdown w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#00a3e0] outline-none text-sm">
-                        <option value="">All Cities / ሁሉም ከተሞች</option>
-                    </select>
-                </div>
+  const showNotification = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type / ዓይነት</label>
-                    <select class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none text-sm">
-                        <option value="">All / ሁሉም</option>
-                        <option>House / ቤት</option>
-                        <option>Villa / ቪላ</option>
-                        <option>Apartment / አፓርታማ</option>
-                        <option>Land / መሬት</option>
-                        <option>Commercial / ንግድ ቤት</option>
-                        <option>Hotel Room / መኝታ</option>
-                    </select>
-                </div>
+  const handleListProperty = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'pending'), {
+        ...formData,
+        price: Number(formData.price),
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        userId: user.uid
+      });
+      showNotification("Submitted for review! / ለግምገማ ተልኳል!");
+      setFormData({ title: '', price: '', city: '', type: 'House', phone: '', desc: '', photoUrl: '', specificLocation: '', size: '', rooms: '' });
+      setView('browse');
+    } catch (err) { showNotification("Error submitting", "error"); }
+  };
 
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Min Price / ዝቅተኛ ዋጋ (ብር)</label>
-                    <input type="number" placeholder="0" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none text-sm">
-                </div>
+  const approveListing = async (item) => {
+    const { id, ...data } = item;
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'listings'), { ...data, status: 'active' });
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pending', id));
+    showNotification("Approved!");
+  };
 
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Max Price / ከፍተኛ ዋጋ (ብር)</label>
-                    <input type="number" placeholder="No Limit" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none text-sm">
-                </div>
-            </div>
-            <div class="mt-6">
-                <button onclick="triggerSearch()" class="bg-[#00a3e0] text-white px-10 py-3 rounded-xl font-bold shadow-lg hover:bg-[#0088bc] transition active:scale-95">Search / ፈልግ</button>
-            </div>
-        </div>
-    </section>
+  const deleteItem = async (id, isPending = false) => {
+    const col = isPending ? 'pending' : 'listings';
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
+    showNotification("Removed");
+  };
 
-    <!-- LISTINGS GRID -->
-    <main class="max-w-7xl mx-auto px-6 py-16">
-        <div class="flex justify-between items-center mb-10 border-b pb-4">
+  const filteredListings = listings.filter(l => {
+    const matchesFilter = activeFilter === 'All' || l.type === activeFilter;
+    const matchesSearchCity = !searchCity || l.city === searchCity;
+    const matchesSearchType = !searchType || l.type === searchType;
+    const matchesMinPrice = !searchMinPrice || Number(l.price) >= Number(searchMinPrice);
+    
+    return matchesFilter && matchesSearchCity && matchesSearchType && matchesMinPrice;
+  });
+
+  const resetFilters = () => {
+    setSearchCity('');
+    setSearchType('');
+    setSearchMinPrice('');
+    setActiveFilter('All');
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center text-[#00a3e0] font-bold animate-pulse text-2xl tracking-tighter">EthioHomes...</div>;
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans">
+      
+      {/* NAVIGATION */}
+      <nav className="bg-white border-b sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-x-3 cursor-pointer" onClick={() => {setView('browse'); resetFilters();}}>
+            <div className="w-11 h-11 bg-[#00a3e0] rounded-xl flex items-center justify-center text-white text-2xl shadow-inner">🏠</div>
             <div>
-                <h2 class="text-2xl font-bold text-gray-800">አዳዲስ የሚገኙ ንብረቶች</h2>
-                <p class="text-[#00a3e0] text-sm font-medium">በቅርቡ የወጡ ማስታወቂያዎች</p>
+              <h1 className="text-xl font-bold leading-none text-gray-900 tracking-tight">EthioHomes</h1>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Property Portal</span>
             </div>
-        </div>
-        
-        <div id="listings-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-             <div class="p-12 border-2 border-dashed border-gray-200 rounded-3xl text-center col-span-full bg-white">
-                <i class="fa-solid fa-hotel text-4xl text-gray-200 mb-4"></i>
-                <p class="text-gray-500 font-medium italic">በአሁኑ ሰዓት የሚገኙ ንብረቶች እዚህ ይደረደራሉ...</p>
-             </div>
-        </div>
-    </main>
+          </div>
+          
+          <div className="hidden lg:flex items-center gap-x-8 text-sm font-bold text-gray-700">
+            <button onClick={() => {setView('browse'); setActiveFilter('All');}} className="hover:text-[#00a3e0] transition-colors">Buy / ግዢ</button>
+            <button onClick={() => {setView('browse'); setActiveFilter('All');}} className="hover:text-[#00a3e0] transition-colors">Rent / ኪራይ</button>
+            <button onClick={() => {setView('browse'); setActiveFilter('Hotel Room');}} className={`hover:text-[#00a3e0] transition-colors ${activeFilter === 'Hotel Room' ? 'text-[#00a3e0]' : ''}`}>
+              Hotel Rooms / መኝታ
+            </button>
+            <button onClick={() => setView('admin')} className="ml-4 text-gray-300 hover:text-black flex items-center gap-1 transition-colors">
+              <ShieldCheck size={16} /> Admin {pendingListings.length > 0 && `(${pendingListings.length})`}
+            </button>
+          </div>
 
-    <!-- MODAL: LIST PROPERTY -->
-    <div id="form-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-        <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden">
-            <div class="bg-[#00a3e0] p-6 text-white flex justify-between items-center">
-                <div>
-                    <h2 class="text-xl font-bold">ይሽጡ፣ ያከራዩ፣ ይደልሉ</h2>
-                    <p class="text-xs opacity-90">ይሽጡ፣ ያከራዩ፣ ይደልሉ</p>
+          <button onClick={() => setView('sell')} className="bg-[#00a3e0] hover:bg-[#0088bc] text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg hover:shadow-[#00a3e0]/20 flex flex-col items-center leading-tight">
+            <span className="text-[9px] opacity-80 uppercase tracking-widest">List Now</span>
+            <span className="text-xs md:text-sm">ይሽጡ፣ ያከራዩ</span>
+          </button>
+        </div>
+      </nav>
+
+      {view === 'browse' && (
+        <>
+          {/* HERO SECTION */}
+          <header className="relative h-[40vh] flex flex-col justify-center items-center text-white text-center px-6 overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80')] bg-cover bg-center" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-transparent" />
+            <div className="relative z-10 max-w-4xl">
+              <h1 className="text-4xl md:text-5xl font-black mb-4 drop-shadow-2xl">
+                ቤትዎን ወይም መኝታዎን እዚህ ያግኙ
+              </h1>
+              <p className="text-lg opacity-90 leading-relaxed font-medium">
+                የሚፈልጉትን የቤት ዓይነት እና ዋጋ በመምረጥ ይፈልጉ
+              </p>
+            </div>
+          </header>
+
+          {/* SEARCH FILTERS */}
+          <section className="max-w-7xl mx-auto px-6 -mt-16 relative z-10">
+            <div className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-2xl border border-gray-100">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                    <MapPin size={12} /> City / ከተማ
+                  </label>
+                  <div className="relative">
+                    <select 
+                      value={searchCity} 
+                      onChange={e => setSearchCity(e.target.value)}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none text-sm appearance-none focus:ring-2 focus:ring-[#00a3e0]/20 focus:border-[#00a3e0] transition-all font-semibold"
+                    >
+                      <option value="">All Cities / ሁሉም ከተሞች</option>
+                      {CITIES.map(c => <option key={c.en} value={c.en}>{c.en} / {c.am}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                  </div>
                 </div>
-                <button onclick="closeForm()" class="text-3xl font-light hover:rotate-90 transition-transform">&times;</button>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                    <Building size={12} /> Type / ዓይነት
+                  </label>
+                  <div className="relative">
+                    <select 
+                      value={searchType} 
+                      onChange={e => setSearchType(e.target.value)}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none text-sm appearance-none focus:ring-2 focus:ring-[#00a3e0]/20 focus:border-[#00a3e0] transition-all font-semibold"
+                    >
+                      <option value="">All Types / ሁሉም</option>
+                      {PROPERTY_TYPES.map(t => <option key={t.en} value={t.en}>{t.en} / {t.am}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                    <Banknote size={12} /> Min Price / ትንሹ ዋጋ
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 500"
+                      value={searchMinPrice}
+                      onChange={e => setSearchMinPrice(e.target.value)}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl outline-none text-sm focus:ring-2 focus:ring-[#00a3e0]/20 focus:border-[#00a3e0] transition-all font-semibold"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">ETB</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button 
+                    onClick={resetFilters}
+                    className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-2xl font-bold hover:bg-gray-200 transition flex items-center justify-center"
+                  >
+                    <RefreshCcw size={18} />
+                  </button>
+                  <button className="flex-[2] bg-[#00a3e0] text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-[#00a3e0]/30 hover:bg-[#0088bc] transition flex items-center justify-center gap-2">
+                    <Search size={18} /> Search
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* LISTINGS GRID */}
+          <main className="max-w-7xl mx-auto px-6 py-16">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
+              <div>
+                <h2 className="text-3xl font-black text-gray-900 mb-1">ለእርስዎ የቀረቡ ንብረቶች</h2>
+                <div className="h-1.5 w-20 bg-[#00a3e0] rounded-full"></div>
+              </div>
+              <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">{filteredListings.length} Listing(s)</p>
             </div>
             
-            <div class="p-8 space-y-6 max-h-[75vh] overflow-y-auto modal-scroll">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase">Title / ርዕስ</label>
-                        <input id="form-title" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#00a3e0]" placeholder="E.g. Modern Villa in Bole">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+              {filteredListings.map(item => (
+                <div key={item.id} className="group bg-white rounded-[2rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 flex flex-col">
+                  <div className="h-60 relative overflow-hidden">
+                    <img src={item.photoUrl || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800'} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md text-gray-900 text-[10px] px-3 py-1.5 rounded-full font-black uppercase tracking-tighter shadow-sm">{item.type}</div>
+                    <div className="absolute bottom-4 right-4 bg-[#00a3e0] text-white px-4 py-2 rounded-2xl font-black shadow-lg">
+                      {Number(item.price).toLocaleString()} <span className="text-[10px] ml-0.5">ብር</span>
                     </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase">Price / ዋጋ (ብር)</label>
-                        <input id="form-price" type="number" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#00a3e0]" placeholder="Price">
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col">
+                    <h3 className="font-black text-xl text-gray-800 mb-2 leading-tight">{item.title}</h3>
+                    <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-4 font-medium">
+                      <MapPin size={14} className="text-[#00a3e0]" /> {item.city} {item.specificLocation && ` - ${item.specificLocation}`}
                     </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase">City / ከተማ</label>
-                        <select id="form-city" class="city-dropdown w-full p-3 border border-gray-200 rounded-xl outline-none text-sm">
-                            <option value="">Select City / ከተማ ይምረጡ</option>
-                        </select>
+                    
+                    {/* Brief Stats snippet if available */}
+                    {(item.size || item.rooms) && (
+                      <div className="flex gap-4 mb-4 text-xs font-bold text-gray-400 border-t border-gray-50 pt-3">
+                        {item.size && <span className="flex items-center gap-1"><Maximize2 size={12} /> {item.size} m²</span>}
+                        {item.rooms && <span className="flex items-center gap-1"><BedDouble size={12} /> {item.rooms} Rooms</span>}
+                      </div>
+                    )}
+
+                    <div className="mt-auto pt-4">
+                      <a href={`tel:${item.phone}`} className="flex items-center justify-center gap-3 w-full bg-gray-900 text-white py-4 rounded-2xl font-black hover:bg-[#00a3e0] transition-all shadow-xl hover:shadow-[#00a3e0]/20">
+                        <Phone size={18} /> CALL / ደውሉ
+                      </a>
                     </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase">Phone / ስልክ</label>
-                        <input id="form-phone" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#00a3e0]" placeholder="09...">
+                  </div>
+                </div>
+              ))}
+            </div>
+          </main>
+        </>
+      )}
+
+      {/* SELL VIEW (LISTING FORM) */}
+      {view === 'sell' && (
+        <div className="py-12 md:py-20 px-6 bg-slate-900 min-h-screen">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-4xl mx-auto shadow-2xl overflow-hidden">
+            <div className="bg-[#00a3e0] px-10 py-10 text-white flex justify-between items-start">
+              <div>
+                <h2 className="text-3xl font-black mb-2">ንብረትዎን ይለጥፉ</h2>
+                <p className="text-white/80 font-medium">ሽያጭ፣ ኪራይ ወይም መኝታ ቤቶችን በፍጥነት ያስመዝግቡ</p>
+              </div>
+              <button onClick={() => setView('browse')} className="bg-white/20 p-2 rounded-full hover:bg-white/40 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleListProperty} className="p-8 md:p-12 space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
+                
+                {/* Basic Info */}
+                <div className="md:col-span-2">
+                  <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest mb-6 border-b pb-2">1. Basic Information / መሠረታዊ መረጃ</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Property Name / የንብረቱ ስም</label>
+                      <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-[#00a3e0]/20" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. Modern Villa in Bole" />
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Type / ዓይነት</label>
+                      <select className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none text-sm font-bold appearance-none" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                        {PROPERTY_TYPES.map(t => <option key={t.en} value={t.en}>{t.en} / {t.am}</option>)}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
-                <button onclick="handleSubmit()" class="w-full bg-[#00a3e0] text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-[#0088bc] transition-all transform active:scale-[0.98]">
-                    Submit / ይለጥፉ
+                {/* Pricing & Location */}
+                <div className="md:col-span-2">
+                   <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest mb-6 border-b pb-2">2. Price & Location / ዋጋ እና ቦታ</h4>
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Price / ዋጋ (ETB)</label>
+                      <input required type="number" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} placeholder="0.00" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">City / ከተማ</label>
+                      <select required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none text-sm font-bold" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})}>
+                        <option value="">Select City</option>
+                        {CITIES.map(c => <option key={c.en} value={c.en}>{c.en} / {c.am}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Specific Area / ሰፈር</label>
+                      <input className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.specificLocation} onChange={e => setFormData({...formData, specificLocation: e.target.value})} placeholder="e.g. Bole Atlas, Summit" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details Section */}
+                <div className="md:col-span-2">
+                   <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest mb-6 border-b pb-2">3. Property Details / የንብረት ዝርዝር</h4>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><Maximize2 size={12}/> Size / ስፋት (m²)</label>
+                      <input type="text" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} placeholder="e.g. 200" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><BedDouble size={12}/> Rooms / ክፍሎች</label>
+                      <input type="text" className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.rooms} onChange={e => setFormData({...formData, rooms: e.target.value})} placeholder="e.g. 4 Bedrooms, 2 Bath" />
+                    </div>
+                   </div>
+                   
+                   <div className="space-y-2">
+                    <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1"><AlignLeft size={12}/> Detailed Description / ዝርዝር መግለጫ</label>
+                    <textarea 
+                      className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-3xl outline-none min-h-[160px] resize-none focus:ring-2 focus:ring-[#00a3e0]/10" 
+                      value={formData.desc} 
+                      onChange={e => setFormData({...formData, desc: e.target.value})} 
+                      placeholder="Add specific location details, nearby facilities, special features, size, or any dealer contact info..."
+                    />
+                    <p className="text-[10px] text-gray-400 font-medium italic">* This info helps customers find your property faster.</p>
+                   </div>
+                </div>
+
+                {/* Contact & Media */}
+                <div className="md:col-span-2">
+                   <h4 className="text-sm font-black text-[#00a3e0] uppercase tracking-widest mb-6 border-b pb-2">4. Media & Contact / ምስል እና አድራሻ</h4>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Phone / ስልክ</label>
+                      <input required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="09..." />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Image URL / የፎቶ ሊንክ</label>
+                      <input className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none" value={formData.photoUrl} onChange={e => setFormData({...formData, photoUrl: e.target.value})} placeholder="Link to property image" />
+                    </div>
+                   </div>
+                </div>
+              </div>
+
+              <div className="pt-6">
+                <button type="submit" className="w-full bg-[#00a3e0] text-white py-5 rounded-3xl font-black text-lg shadow-2xl shadow-[#00a3e0]/40 hover:bg-[#0088bc] transition active:scale-[0.98]">
+                  PUBLISH PROPERTY / ይላኩ
                 </button>
-            </div>
+              </div>
+            </form>
+          </div>
         </div>
+      )}
+
+      {/* ADMIN VIEW */}
+      {view === 'admin' && (
+        <div className="max-w-7xl mx-auto px-6 py-16">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
+            <div>
+              <h2 className="text-3xl font-black flex items-center gap-3"><ShieldCheck className="text-[#00a3e0]" size={32} /> Admin Control</h2>
+              <p className="text-gray-400 font-bold text-sm uppercase tracking-widest mt-1">Quality Control Dashboard</p>
+            </div>
+            <button onClick={() => setView('browse')} className="bg-gray-100 px-6 py-3 rounded-2xl font-bold hover:bg-gray-200 transition-colors">Back to Browse</button>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="space-y-6">
+              <h3 className="font-black uppercase text-xs tracking-[0.2em] text-orange-500 border-b pb-4">Pending Requests ({pendingListings.length})</h3>
+              {pendingListings.map(item => (
+                <div key={item.id} className="bg-white p-5 rounded-[2rem] border border-orange-50 shadow-sm">
+                  <div className="flex gap-4 items-start mb-4">
+                    <img src={item.photoUrl || 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=100'} className="w-20 h-20 rounded-2xl object-cover" />
+                    <div className="flex-1">
+                      <p className="font-black text-gray-800">{item.title}</p>
+                      <p className="text-[11px] font-bold text-[#00a3e0] uppercase">{item.type} in {item.city}</p>
+                      <p className="text-lg font-black text-gray-900">{Number(item.price).toLocaleString()} ብር</p>
+                    </div>
+                  </div>
+                  {item.desc && (
+                    <div className="bg-gray-50 p-4 rounded-2xl text-xs text-gray-600 mb-4 whitespace-pre-line border border-gray-100">
+                      <p className="font-bold text-[10px] text-gray-400 uppercase mb-1">Detailed Description:</p>
+                      {item.desc}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <button onClick={() => approveListing(item)} className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2">
+                      <Check size={18} /> Approve
+                    </button>
+                    <button onClick={() => deleteItem(item.id, true)} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition flex items-center justify-center gap-2">
+                      <Trash2 size={18} /> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="space-y-6">
+              <h3 className="font-black uppercase text-xs tracking-[0.2em] text-blue-500 border-b pb-4">Live Listings ({listings.length})</h3>
+              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                {listings.map(item => (
+                  <div key={item.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex gap-4 items-center">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-gray-800 truncate">{item.title}</p>
+                      <p className="text-[10px] text-gray-400 font-black uppercase">{item.city} • {item.type}</p>
+                    </div>
+                    <button onClick={() => deleteItem(item.id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications */}
+      {toast && (
+        <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] px-10 py-4 rounded-[2rem] text-white font-black shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-300
+          ${toast.type === 'error' ? 'bg-red-600' : 'bg-gray-900'}`}>
+          {toast.msg}
+        </div>
+      )}
+      
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e2e2; border-radius: 10px; }
+      `}</style>
     </div>
-
-    <!-- NOTIFICATION -->
-    <div id="toast-container" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200]"></div>
-
-    <script>
-        // Full list of 40 cities, formatted as English / Amharic
-        const cities = [
-            { en: "Addis Ababa", am: "አዲስ አበባ" },
-            { en: "Adama", am: "አዳማ" },
-            { en: "Adigrat", am: "አዲግራት" },
-            { en: "Adwa", am: "አድዋ" },
-            { en: "Arba Minch", am: "አርባ ምንጭ" },
-            { en: "Asella", am: "አሰላ" },
-            { en: "Asosa", am: "አሶሳ" },
-            { en: "Axum", am: "አክሱም" },
-            { en: "Bahir Dar", am: "ባህር ዳር" },
-            { en: "Bati", am: "ባቲ" },
-            { en: "Bishoftu", am: "ቢሾፍቱ" },
-            { en: "Butajira", am: "ቡታጅራ" },
-            { en: "Chagni", am: "ቻግኒ" },
-            { en: "Debre Berhan", am: "ደብረ ብርሃን" },
-            { en: "Debre Markos", am: "ደብረ ማርቆስ" },
-            { en: "Debre Tabor", am: "ደብረ ታቦር" },
-            { en: "Dessie", am: "ደሴ" },
-            { en: "Dilla", am: "ዲላ" },
-            { en: "Dire Dawa", am: "ድሬዳዋ" },
-            { en: "Gambela", am: "ጋምቤላ" },
-            { en: "Ginchi", am: "ጊንጪ" },
-            { en: "Goba", am: "ጎባ" },
-            { en: "Gondar", am: "ጎንደር" },
-            { en: "Harar", am: "ሀረር" },
-            { en: "Hawassa", am: "ሀዋሳ" },
-            { en: "Hosaena", am: "ሆሳዕና" },
-            { en: "Jijiga", am: "ጅጅጋ" },
-            { en: "Jimma", am: "ጅማ" },
-            { en: "Jinka", am: "ጂንካ" },
-            { en: "Kombolcha", am: "ኮምቦልቻ" },
-            { en: "Mekelle", am: "መቀሌ" },
-            { en: "Mettu", am: "መቱ" },
-            { en: "Mizan Aman", am: "ሚዛን አማን" },
-            { en: "Modjo", am: "ሞጆ" },
-            { en: "Nekemte", am: "ነቀምቴ" },
-            { en: "Robe", am: "ሮቤ" },
-            { en: "Semera", am: "ሰመራ" },
-            { en: "Shashemene", am: "ሻሸመኔ" },
-            { en: "Shire", am: "ሽሬ" },
-            { en: "Sodo", am: "ሶዶ" }
-        ];
-
-        window.onload = function() {
-            populateCityDropdowns();
-        }
-
-        function populateCityDropdowns() {
-            const dropdowns = document.querySelectorAll('.city-dropdown');
-            dropdowns.forEach(dropdown => {
-                // Keep the first default option
-                const firstOpt = dropdown.options[0];
-                dropdown.innerHTML = '';
-                dropdown.appendChild(firstOpt);
-
-                cities.forEach(city => {
-                    const opt = document.createElement('option');
-                    opt.value = city.en;
-                    opt.innerHTML = `${city.en} / ${city.am}`;
-                    dropdown.appendChild(opt);
-                });
-            });
-        }
-
-        function openForm() { document.getElementById("form-modal").classList.remove("hidden"); }
-        function closeForm() { document.getElementById("form-modal").classList.add("hidden"); }
-
-        function triggerSearch() {
-            const city = document.getElementById('search-city').value;
-            showToast(`Searching in ${city || 'All Cities'}...`, "info");
-        }
-
-        function handleSubmit() {
-            showToast("Submitted Successfully! / በተሳካ ሁኔታ ተልኳል!", "success");
-            closeForm();
-        }
-
-        function showToast(msg, type) {
-            const container = document.getElementById("toast-container");
-            const toast = document.createElement("div");
-            const color = type === 'success' ? 'bg-green-600' : 'bg-gray-900';
-            toast.className = `${color} text-white px-10 py-4 rounded-2xl font-bold shadow-2xl mb-4 animate-bounce`;
-            toast.innerText = msg;
-            container.appendChild(toast);
-            setTimeout(() => { toast.remove(); }, 3000);
-        }
-    </script>
-</body>
-</html>
+  );
+}
