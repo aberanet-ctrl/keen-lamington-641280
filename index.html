@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="am">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,15 +7,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@100..900&display=swap');
+        body { font-family: 'Noto Sans Ethiopic', 'Inter', sans-serif; }
         .hero-bg {
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
-            url('https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1073&q=80') center/cover no-repeat;
+            background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)),
+            url('https://images.unsplash.com/photo-1582407947304-fd86f028f716?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80') center/cover no-repeat;
         }
-        /* Custom scrollbar for a premium feel */
+        /* Custom scrollbar */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #00a3e0; border-radius: 10px; }
+        
+        .modal-scroll::-webkit-scrollbar { width: 4px; }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -23,231 +26,231 @@
     <!-- NAVIGATION -->
     <nav class="bg-white border-b sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-x-3">
+            <div class="flex items-center gap-x-3 cursor-pointer" onclick="window.location.reload()">
                 <div class="w-11 h-11 bg-[#00a3e0] rounded-xl flex items-center justify-center text-white text-2xl">🏠</div>
                 <div>
                     <h1 class="text-xl font-bold leading-none">EthioHomes</h1>
-                    <span class="text-xs text-gray-500 font-semibold">ኢትዮሆምስ</span>
+                    <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Property Portal</span>
                 </div>
             </div>
-            <div class="hidden md:flex items-center gap-x-8 text-sm font-medium text-gray-700">
-                <a href="#" class="hover:text-[#00a3e0] transition">Buy / ግዢ</a>
-                <a href="#" class="hover:text-[#00a3e0] transition">Rent / ኪራይ</a>
-                <a href="#" class="hover:text-[#00a3e0] transition">Sell / ሽያጭ</a>
-                <a href="#" class="hover:text-[#00a3e0] transition">News / ዜና</a>
+            
+            <div class="hidden lg:flex items-center gap-x-6 text-sm font-medium text-gray-700">
+                <a href="#" class="hover:text-[#00a3e0] transition whitespace-nowrap">Buy / ግዢ</a>
+                <a href="#" class="hover:text-[#00a3e0] transition whitespace-nowrap">Rent / ኪራይ</a>
+                <a href="#" class="hover:text-[#00a3e0] transition whitespace-nowrap">Sell / ሽያጭ</a>
+                <a href="#" class="hover:text-[#00a3e0] transition font-bold border-l pl-6 border-gray-200 text-[#00a3e0]">Hotel Rooms / መኝታ አገ/ት</a>
             </div>
-            <button onclick="openForm()" class="bg-[#00a3e0] hover:bg-[#0088bc] text-white px-5 py-2.5 rounded-xl font-semibold transition shadow-md">
-                List Property / ንብረት ዝርዝር
+
+            <button onclick="openForm()" class="bg-[#00a3e0] hover:bg-[#0088bc] text-white px-4 py-2 rounded-xl font-semibold transition shadow-md flex flex-col items-center leading-tight">
+                <span class="text-[10px] opacity-90">List Property</span>
+                <span class="text-xs md:text-sm font-bold">ይሽጡ፣ ያከራዩ፣ ይደልሉ</span>
             </button>
         </div>
     </nav>
 
     <!-- HERO SECTION -->
-    <header class="hero-bg h-[70vh] flex flex-col justify-center items-center text-white text-center px-4">
-        <h1 class="text-4xl md:text-6xl font-extrabold mb-4 drop-shadow-lg">Find your perfect home / ቤትዎን ያገኙ</h1>
-        <p class="text-lg md:text-xl mb-8 max-w-2xl opacity-90">Explore premium listings across Ethiopia / በኢትዮጵያ ያሉ የሽያጭ፣ ኪራይ እና ግዢ አማራጮችን እዚህ ያገኛሉ</p>
-        <button onclick="document.getElementById('featured-section').scrollIntoView({behavior:'smooth'})" class="bg-white text-[#00a3e0] px-8 py-3 rounded-full text-lg font-bold hover:scale-105 transition-transform shadow-xl">
-            View Listings / ዝርዝር ይመልከቱ
+    <header class="hero-bg h-[60vh] flex flex-col justify-center items-center text-white text-center px-6">
+        <h1 class="text-3xl md:text-5xl font-extrabold mb-6 drop-shadow-xl max-w-4xl leading-tight">
+            ቤትዎን ወይም ንግድ ቦታዎን እዚህ ያግኙ
+        </h1>
+        <p class="text-lg md:text-2xl mb-10 max-w-3xl font-medium leading-relaxed bg-black/20 p-4 rounded-lg backdrop-blur-sm">
+            እኛ መረጃውን በነፃ ከሁሉም ኢትዮጲያ ወደ አንድ ቋት እናመጣለን እርሶ ደግሞ አይተው አረጋግጠው ይግዙ፣ይከራዩ
+        </p>
+        <button onclick="document.getElementById('search-container').scrollIntoView({behavior:'smooth'})" class="bg-[#00a3e0] text-white px-10 py-4 rounded-full text-lg font-bold hover:scale-105 transition-transform shadow-2xl border-2 border-white/20">
+            አሁኑኑ ይፈልጉ
         </button>
     </header>
 
     <!-- SEARCH FILTERS -->
-    <section class="max-w-7xl mx-auto px-6 -mt-16 relative z-10">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100">
-            <h2 class="text-lg font-bold mb-6 flex items-center gap-2">
-                <i class="fa-solid fa-magnifying-glass text-[#00a3e0]"></i> Search Properties / የንብረት ፍለጋ
+    <section id="search-container" class="max-w-7xl mx-auto px-6 -mt-12 relative z-10">
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-2xl border border-gray-100">
+            <h2 class="text-lg font-bold mb-6 flex items-center gap-2 text-gray-800">
+                <i class="fa-solid fa-magnifying-glass text-[#00a3e0]"></i> Search / ንብረት ፍለጋ
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="space-y-1">
-                    <label class="text-xs font-bold text-gray-500 uppercase">City / ከተማ</label>
-                    <select id="search-city" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#00a3e0] outline-none">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">City / ከተማ</label>
+                    <select id="search-city" class="city-dropdown w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#00a3e0] outline-none text-sm">
                         <option value="">All Cities / ሁሉም ከተሞች</option>
-                        <option>Addis Ababa / አዲስ አበባ</option>
-                        <option>Adama / Nazret / አዳማ / ናዝሬት</option>
-                        <option>Adigrat / ዓዲግራት</option>
-                        <option>Alaba / አለባ</option>
-                        <option>Arba Minch / አርባ ምንጭ</option>
-                        <option>Arsi Negele / አርሲ ነገሌ</option>
-                        <option>Asosa / አሶሳ</option>
-                        <option>Awash Arba / አዋሽ አርባ</option>
-                        <option>Axum / አክሱም</option>
-                        <option>Bahir Dar / ባህር ዳር</option>
-                        <option>Bishoftu / Debre Zeyit / ቢሾፍቱ / ደብረ ዘይት</option>
-                        <option>Bonga / ቦንጋ</option>
-                        <option>Chiro / ጭሮ</option>
-                        <option>Debre Berhan / ደብረ ብርሃን</option>
-                        <option>Debre Markos / ደብረ ማርቆስ</option>
-                        <option>Dessie / ደሴ</option>
-                        <option>Dire Dawa / ድሬዳዋ</option>
-                        <option>Durame / ዱራሜ</option>
-                        <option>Gambela / ጋምቤላ</option>
-                        <option>Goba / ጎባ</option>
-                        <option>Gode / ጎዴ</option>
-                        <option>Gondar / ጎንደር</option>
-                        <option>Harar / ሐረር</option>
-                        <option>Hawassa / ሀዋሳ</option>
-                        <option>Hossana / ሆሳዕና</option>
-                        <option>Jigjiga / ጅጅጋ</option>
-                        <option>Jimma / ጅማ</option>
-                        <option>Jinka / ጂንካ</option>
-                        <option>Kabri Dar / ቀብሪ ደሃር</option>
-                        <option>Mekelle / መቀሌ</option>
-                        <option>Metahara / መታሃራ</option>
-                        <option>Mojo / ሞጆ</option>
-                        <option>Moro Lemariam / ሞሮ ለማርያም</option>
-                        <option>Moyale / ሞያሌ</option>
-                        <option>Nekemte / ነቀምቴ</option>
-                        <option>Semera / ሰመራ</option>
-                        <option>Shashamane / ሻሸመኔ</option>
-                        <option>Shire Endasillasie / ሽሬ እንዳሥላሴ</option>
-                        <option>Wolaita Sodo / ወላይታ ሶዶ</option>
-                        <option>Wolkite / ወልቂጤ</option>
-                        <option>Worabe / ወራቤ</option>
-                        <option>Ziway / Batu / ዝዋይ / ባቱ</option>
                     </select>
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs font-bold text-gray-500 uppercase">Type / ዓይነት</label>
-                    <select id="search-houseType" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none">
-                        <option value="">House Type / የቤት ዓይነት</option>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Type / ዓይነት</label>
+                    <select class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none text-sm">
+                        <option value="">All / ሁሉም</option>
                         <option>House / ቤት</option>
                         <option>Villa / ቪላ</option>
                         <option>Apartment / አፓርታማ</option>
+                        <option>Land / መሬት</option>
+                        <option>Commercial / ንግድ ቤት</option>
+                        <option>Hotel Room / መኝታ</option>
                     </select>
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs font-bold text-gray-500 uppercase">Min Price (ETB)</label>
-                    <input id="min-price" type="number" placeholder="0" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Min Price / ዝቅተኛ ዋጋ (ብር)</label>
+                    <input type="number" placeholder="0" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none text-sm">
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs font-bold text-gray-500 uppercase">Max Price (ETB)</label>
-                    <input id="max-price" type="number" placeholder="Any" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Max Price / ከፍተኛ ዋጋ (ብር)</label>
+                    <input type="number" placeholder="No Limit" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg outline-none text-sm">
                 </div>
             </div>
-            <div class="mt-6 flex flex-wrap gap-3">
-                <button onclick="applyFilters()" class="bg-[#00a3e0] text-white px-8 py-3 rounded-xl font-bold shadow hover:bg-[#0088bc] transition">Search / ፈልግ</button>
-                <button onclick="resetFilters()" class="bg-gray-100 text-gray-600 px-8 py-3 rounded-xl font-bold hover:bg-gray-200 transition">Clear / አጥፋ</button>
+            <div class="mt-6">
+                <button onclick="triggerSearch()" class="bg-[#00a3e0] text-white px-10 py-3 rounded-xl font-bold shadow-lg hover:bg-[#0088bc] transition active:scale-95">Search / ፈልግ</button>
             </div>
         </div>
     </section>
 
-    <!-- LISTINGS -->
-    <section id="featured-section" class="max-w-7xl mx-auto px-6 py-16">
-        <div class="flex justify-between items-end mb-8">
+    <!-- LISTINGS GRID -->
+    <main class="max-w-7xl mx-auto px-6 py-16">
+        <div class="flex justify-between items-center mb-10 border-b pb-4">
             <div>
-                <h2 class="text-3xl font-bold text-gray-900">Featured Properties</h2>
-                <p class="text-gray-500">የተመረጡ እና በቅርቡ የወጡ ንብረቶች</p>
-            </div>
-            <span id="results-count" class="text-sm font-semibold text-gray-400">Showing all listings</span>
-        </div>
-        <div id="featured-properties" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <!-- Mock Initial Data -->
-            <div class="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100 group">
-                <div class="h-56 bg-gray-200 overflow-hidden relative">
-                    <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=1170&q=80" class="w-full h-full object-cover group-hover:scale-110 transition duration-500" alt="Villa">
-                    <div class="absolute top-4 left-4 bg-[#00a3e0] text-white text-xs font-bold px-3 py-1 rounded-full uppercase">Featured</div>
-                </div>
-                <div class="p-6">
-                    <h3 class="text-xl font-bold text-gray-900 mb-1">Luxury Villa in Bole</h3>
-                    <p class="text-sm text-gray-500 mb-4"><i class="fa-solid fa-location-dot text-[#00a3e0] mr-1"></i> Addis Ababa / አዲስ አበባ</p>
-                    <div class="flex justify-between items-center border-t pt-4">
-                        <span class="text-2xl font-black text-[#00a3e0]">12,500,000 ETB</span>
-                        <div class="flex gap-3 text-gray-400 text-sm">
-                            <span><i class="fa-solid fa-bed"></i> 4</span>
-                            <span><i class="fa-solid fa-bath"></i> 3</span>
-                        </div>
-                    </div>
-                </div>
+                <h2 class="text-2xl font-bold text-gray-800">አዳዲስ የሚገኙ ንብረቶች</h2>
+                <p class="text-[#00a3e0] text-sm font-medium">በቅርቡ የወጡ ማስታወቂያዎች</p>
             </div>
         </div>
-    </section>
+        
+        <div id="listings-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+             <div class="p-12 border-2 border-dashed border-gray-200 rounded-3xl text-center col-span-full bg-white">
+                <i class="fa-solid fa-hotel text-4xl text-gray-200 mb-4"></i>
+                <p class="text-gray-500 font-medium italic">በአሁኑ ሰዓት የሚገኙ ንብረቶች እዚህ ይደረደራሉ...</p>
+             </div>
+        </div>
+    </main>
 
-    <!-- ADD PROPERTY MODAL -->
-    <div id="form-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-        <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+    <!-- MODAL: LIST PROPERTY -->
+    <div id="form-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+        <div class="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden">
             <div class="bg-[#00a3e0] p-6 text-white flex justify-between items-center">
-                <h2 class="text-xl font-bold">List Your Property / ንብረትዎን ይጥቀሱ</h2>
-                <button onclick="closeForm()" class="text-2xl font-light hover:rotate-90 transition-transform">&times;</button>
+                <div>
+                    <h2 class="text-xl font-bold">ይሽጡ፣ ያከራዩ፣ ይደልሉ</h2>
+                    <p class="text-xs opacity-90">ይሽጡ፣ ያከራዩ፣ ይደልሉ</p>
+                </div>
+                <button onclick="closeForm()" class="text-3xl font-light hover:rotate-90 transition-transform">&times;</button>
             </div>
             
-            <div class="p-8 space-y-6 max-h-[75vh] overflow-y-auto">
+            <div class="p-8 space-y-6 max-h-[75vh] overflow-y-auto modal-scroll">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div class="space-y-1">
-                        <label class="text-xs font-bold text-gray-400 uppercase">Property Title / ርዕስ</label>
-                        <input id="title" class="w-full p-3 border rounded-xl outline-none focus:border-[#00a3e0]" placeholder="e.g. Modern Apartment">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Title / ርዕስ</label>
+                        <input id="form-title" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#00a3e0]" placeholder="E.g. Modern Villa in Bole">
                     </div>
                     <div class="space-y-1">
-                        <label class="text-xs font-bold text-gray-400 uppercase">Price (ETB) / ዋጋ</label>
-                        <input id="price" type="number" class="w-full p-3 border rounded-xl outline-none focus:border-[#00a3e0]" placeholder="Price in Birr">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Price / ዋጋ (ብር)</label>
+                        <input id="form-price" type="number" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#00a3e0]" placeholder="Price">
                     </div>
                     <div class="space-y-1">
-                        <label class="text-xs font-bold text-gray-400 uppercase">City / ከተማ</label>
-                        <select id="city" class="w-full p-3 border rounded-xl outline-none">
-                            <!-- Options match the search filter -->
-                            <option value="">Select City</option>
-                            <option>Addis Ababa</option><option>Adama</option><option>Bahir Dar</option><option>Hawassa</option><option>Mekelle</option>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">City / ከተማ</label>
+                        <select id="form-city" class="city-dropdown w-full p-3 border border-gray-200 rounded-xl outline-none text-sm">
+                            <option value="">Select City / ከተማ ይምረጡ</option>
                         </select>
                     </div>
                     <div class="space-y-1">
-                        <label class="text-xs font-bold text-gray-400 uppercase">Phone / ስልክ</label>
-                        <input id="phone" class="w-full p-3 border rounded-xl outline-none" placeholder="09...">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Phone / ስልክ</label>
+                        <input id="form-phone" class="w-full p-3 border border-gray-200 rounded-xl outline-none focus:border-[#00a3e0]" placeholder="09...">
                     </div>
                 </div>
 
-                <div class="space-y-1">
-                    <label class="text-xs font-bold text-gray-400 uppercase">Description / መግለጫ</label>
-                    <textarea id="description" class="w-full p-3 border rounded-xl h-24 outline-none" placeholder="Tell us about the property..."></textarea>
-                </div>
-
-                <button onclick="submitProperty()" class="w-full bg-[#00a3e0] text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:bg-[#0088bc] transition">
-                    Publish Listing / ይለጥፉ
+                <button onclick="handleSubmit()" class="w-full bg-[#00a3e0] text-white py-4 rounded-2xl font-bold text-lg shadow-xl hover:bg-[#0088bc] transition-all transform active:scale-[0.98]">
+                    Submit / ይለጥፉ
                 </button>
             </div>
         </div>
     </div>
 
+    <!-- NOTIFICATION -->
+    <div id="toast-container" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200]"></div>
+
     <script>
-        // Modal State
+        // Full list of 40 cities, formatted as English / Amharic
+        const cities = [
+            { en: "Addis Ababa", am: "አዲስ አበባ" },
+            { en: "Adama", am: "አዳማ" },
+            { en: "Adigrat", am: "አዲግራት" },
+            { en: "Adwa", am: "አድዋ" },
+            { en: "Arba Minch", am: "አርባ ምንጭ" },
+            { en: "Asella", am: "አሰላ" },
+            { en: "Asosa", am: "አሶሳ" },
+            { en: "Axum", am: "አክሱም" },
+            { en: "Bahir Dar", am: "ባህር ዳር" },
+            { en: "Bati", am: "ባቲ" },
+            { en: "Bishoftu", am: "ቢሾፍቱ" },
+            { en: "Butajira", am: "ቡታጅራ" },
+            { en: "Chagni", am: "ቻግኒ" },
+            { en: "Debre Berhan", am: "ደብረ ብርሃን" },
+            { en: "Debre Markos", am: "ደብረ ማርቆስ" },
+            { en: "Debre Tabor", am: "ደብረ ታቦር" },
+            { en: "Dessie", am: "ደሴ" },
+            { en: "Dilla", am: "ዲላ" },
+            { en: "Dire Dawa", am: "ድሬዳዋ" },
+            { en: "Gambela", am: "ጋምቤላ" },
+            { en: "Ginchi", am: "ጊንጪ" },
+            { en: "Goba", am: "ጎባ" },
+            { en: "Gondar", am: "ጎንደር" },
+            { en: "Harar", am: "ሀረር" },
+            { en: "Hawassa", am: "ሀዋሳ" },
+            { en: "Hosaena", am: "ሆሳዕና" },
+            { en: "Jijiga", am: "ጅጅጋ" },
+            { en: "Jimma", am: "ጅማ" },
+            { en: "Jinka", am: "ጂንካ" },
+            { en: "Kombolcha", am: "ኮምቦልቻ" },
+            { en: "Mekelle", am: "መቀሌ" },
+            { en: "Mettu", am: "መቱ" },
+            { en: "Mizan Aman", am: "ሚዛን አማን" },
+            { en: "Modjo", am: "ሞጆ" },
+            { en: "Nekemte", am: "ነቀምቴ" },
+            { en: "Robe", am: "ሮቤ" },
+            { en: "Semera", am: "ሰመራ" },
+            { en: "Shashemene", am: "ሻሸመኔ" },
+            { en: "Shire", am: "ሽሬ" },
+            { en: "Sodo", am: "ሶዶ" }
+        ];
+
+        window.onload = function() {
+            populateCityDropdowns();
+        }
+
+        function populateCityDropdowns() {
+            const dropdowns = document.querySelectorAll('.city-dropdown');
+            dropdowns.forEach(dropdown => {
+                // Keep the first default option
+                const firstOpt = dropdown.options[0];
+                dropdown.innerHTML = '';
+                dropdown.appendChild(firstOpt);
+
+                cities.forEach(city => {
+                    const opt = document.createElement('option');
+                    opt.value = city.en;
+                    opt.innerHTML = `${city.en} / ${city.am}`;
+                    dropdown.appendChild(opt);
+                });
+            });
+        }
+
         function openForm() { document.getElementById("form-modal").classList.remove("hidden"); }
         function closeForm() { document.getElementById("form-modal").classList.add("hidden"); }
 
-        // Core Submission (Logic)
-        function submitProperty() {
-            const title = document.getElementById("title").value;
-            const price = document.getElementById("price").value;
-            const city = document.getElementById("city").value;
+        function triggerSearch() {
+            const city = document.getElementById('search-city').value;
+            showToast(`Searching in ${city || 'All Cities'}...`, "info");
+        }
 
-            if(!title || !price || !city) {
-                showToast("Please fill the required fields / እባክዎ አስፈላጊዎቹን ቦታዎች ይሙሉ", "error");
-                return;
-            }
-
-            showToast("Property listing simulated successfully! / ንብረቱ በተሳካ ሁኔታ ተመዝግቧል (ምሳሌ)", "success");
+        function handleSubmit() {
+            showToast("Submitted Successfully! / በተሳካ ሁኔታ ተልኳል!", "success");
             closeForm();
         }
 
-        // Custom Toast UI
-        function showToast(message, type) {
+        function showToast(msg, type) {
+            const container = document.getElementById("toast-container");
             const toast = document.createElement("div");
-            toast.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full text-white font-bold shadow-2xl transition-opacity z-[200] ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
-            toast.innerText = message;
-            document.body.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = "0"; setTimeout(() => toast.remove(), 500); }, 3000);
-        }
-
-        function applyFilters() {
-            showToast("Filtering listings... / ፍለጋ በመከናወን ላይ ነው...", "success");
-        }
-
-        function resetFilters() {
-            document.getElementById("search-city").value = "";
-            document.getElementById("search-houseType").value = "";
-            document.getElementById("min-price").value = "";
-            document.getElementById("max-price").value = "";
-            showToast("Filters cleared / ፍለጋው ተሰርዟል", "success");
+            const color = type === 'success' ? 'bg-green-600' : 'bg-gray-900';
+            toast.className = `${color} text-white px-10 py-4 rounded-2xl font-bold shadow-2xl mb-4 animate-bounce`;
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 3000);
         }
     </script>
 </body>
